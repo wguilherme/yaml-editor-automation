@@ -50,7 +50,9 @@ fs.createReadStream('recommendations.csv')
   function applyRecommendation(recommendations){
     Object.keys(recommendations).forEach((namespaceKey) => {
       
-      const base_spec = {}
+      const base_spec = {
+        containers: {}
+      }
 
       recommendations[namespaceKey].forEach((recommendation) => {
 
@@ -97,7 +99,7 @@ fs.createReadStream('recommendations.csv')
           const containerKey = container.split(':')[1]
           if(!containerKey) { throw new Error('Container não encontrado na recomendação', recommendation) }
 
-          base_spec[containerKey] = {
+          base_spec.containers[containerKey] = {
             ...base_spec[containerKey],
             [resource]: newValue
           }
@@ -106,6 +108,10 @@ fs.createReadStream('recommendations.csv')
       })
 
       const newSpec = {spec: base_spec}
+
+      if(Object.keys?.(newSpec.spec.containers)?.length === 0){
+        delete newSpec.spec.containers
+      }
 
       const result = yaml.dump(newSpec)
   

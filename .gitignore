@@ -3,3 +3,5 @@ node_modules
 log.txt
 *.csv
 recommendations*.json
+managed_context
+test_suite_analysis
