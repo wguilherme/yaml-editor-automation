@@ -1,7 +1,6 @@
 import yaml from 'js-yaml';
 import csv from 'csv-parser';
 import fs from 'fs';
-import { exec } from 'child_process';
 
 function log(message) {
   console.log(message);
@@ -29,8 +28,6 @@ fs.createReadStream('recommendations.csv')
       namespace
     };
 
-    // console.log('recommendation', recommendation)
-
     if(!recommendations[namespace]){
       recommendations[namespace] = []
     }
@@ -43,67 +40,69 @@ fs.createReadStream('recommendations.csv')
   .on('end', (row) => {
     fs.writeFileSync(`recommendations-${new Date().getTime()}.json`, JSON.stringify(recommendations, null, 2), 'utf8');
     const numNamespaces = namespaces.size;
-    console.log(`Foram encontradas ${recommendations.length} recomendações para ${numNamespaces} namespaces.`);
-
-
-    // console.log(recommendations)
-
+    log(`Foram encontradas ${recommendations.length} recomendações para ${numNamespaces} namespaces.`);
 
     log(`Iniciando execução da aplicação de recomendações.`);
     applyRecommendation(recommendations);
     log(`Finalizando execução da aplicação de recomendações.`);
   })
 
-
-
   function applyRecommendation(recommendations){
     Object.keys(recommendations).forEach((namespaceKey) => {
       
-      const base_spec = {} // para cada namespace
+      const base_spec = {}
 
-    
-      recommendations[namespaceKey].forEach((recommendation) => {     
+      recommendations[namespaceKey].forEach((recommendation) => {
 
-      if(!recommendation?.object || !recommendation?.action){
-        throw new Error('Objeto ou ação não encontrados na recomendação', recommendation)
-      }
-
-      const object = recommendation.object;
-      const action = recommendation.action;
-  
-      const [resource, cluster, namespace, workload, container] = object.split('->');
-  
-      const isIncrease = action.includes('Aumentar');
-      const isDecrease = action.includes('Diminuir');
-      const isMemory = action.includes('memória');
-      const isCPU = action.includes('CPU');
-      const isContainerPatroni = container.includes('patroni');
-
-      console.log('isCPU', isCPU, recommendation)
-
-      let currentValue = null
-      let newValue = null
-  
-      const recommendationValues = recommendation.action.match(/de '[^0-9]*([0-9][^']*)' para '[^0-9]*([0-9]+[^']+)'/);
-  
-   
-      if (recommendationValues && recommendationValues.length === 3) {
-
-        const [_, valorDe, valorPara] = recommendationValues;
-        currentValue = valorDe;
-        newValue = valorPara;
-  
-        if(newValue === null || currentValue === null){
-           throw new Error('Valor novo não encontrado na recomendação') 
+        if(!recommendation?.object || !recommendation?.action){
+          throw new Error('Objeto ou ação não encontrados na recomendação', recommendation)
         }
 
-      } else {
-        log(`Padrão não encontrado na string: ${action}`);
-      }
-  
-      if(isContainerPatroni) {  
+        const object = recommendation.object;
+        const action = recommendation.action;
+    
+        const [_resource, _cluster, _namespace, _workload, container] = object.split('->');
+    
+        // const isIncrease = action.includes('Aumentar');
+        // const isCPU = action.includes('CPU');
+        // const isDecrease = action.includes('Diminuir');
+        const isMemory = action.includes('memória');
+        const isContainerPatroni = container.includes('patroni');
+
+        let currentValue = null
+        let newValue = null
+    
+        const recommendationValues = recommendation.action.match(/de '[^0-9]*([0-9][^']*)' para '[^0-9]*([0-9]+[^']+)'/);
+    
+    
+        if (recommendationValues && recommendationValues.length === 3) {
+
+          const [_, valorDe, valorPara] = recommendationValues;
+          currentValue = valorDe;
+          newValue = valorPara;
+    
+          if(newValue === null || currentValue === null){
+            throw new Error('Valor novo não encontrado na recomendação') 
+          }
+
+        } else {
+          log(`Padrão não encontrado na string: ${action}`);
+        }
+    
         const resource = isMemory ? 'memory' : 'cpu';        
-        base_spec[resource] = newValue      }
+
+        if(isContainerPatroni) {  
+          base_spec[resource] = newValue
+        } else {
+          const containerKey = container.split(':')[1]
+          if(!containerKey) { throw new Error('Container não encontrado na recomendação', recommendation) }
+
+          base_spec[containerKey] = {
+            ...base_spec[containerKey],
+            [resource]: newValue
+          }
+
+        }
       })
 
       const newSpec = {spec: base_spec}
