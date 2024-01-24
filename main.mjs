@@ -28,14 +28,13 @@ fs.createReadStream('recommendations.csv')
     };
 
     recommendations.push(recommendation);
-
-    
+        
   })
   .on('end', (row) => {
     const numNamespaces = namespaces.size;
     console.log(`Foram encontradas ${recommendations.length} recomendações para ${numNamespaces} namespaces.`);
 
-    console.log(recommendations)
+    // console.log(recommendations)
 
 
     log(`Iniciando execução da aplicação de recomendações.`);
@@ -60,12 +59,22 @@ fs.createReadStream('recommendations.csv')
     let newValue = null
     const isContainerPatroni = container.includes('patroni');
 
-    const matchValues = recommendation.action.match(/de '(\d+[\w]+)' para '<=(\d+[\w]+)'/);
+    const matchValues = recommendation.action.match(/de '[^0-9]*([0-9][^']*)' para '[^0-9]*([0-9]+[^']+)'/);
+
+    console.log('matchValues', recommendation.action)
 
     if (matchValues && matchValues.length === 3) {
       const [_, valorDe, valorPara] = matchValues;
       currentValue = valorDe;
       newValue = valorPara;
+
+
+      console.log('debug1', {
+        currentValue,
+        newValue,
+      })
+
+      if(newValue === null){ throw new Error('Valor novo não encontrado na recomendação') }
     } else {
       log(`Padrão não encontrado na string: ${action}`);
     }
