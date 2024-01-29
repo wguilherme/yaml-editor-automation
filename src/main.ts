@@ -4,7 +4,7 @@ import fs from 'fs';
 
 const IS_DEBUG_MODE = process.env.DEBUG === 'true';
 
-function log(message) {
+function log(message: string) {
   console.log(message);
   const date = new Date();
 
@@ -13,7 +13,7 @@ function log(message) {
   fs.appendFileSync('log.txt', log, 'utf8');
 }
 
-const recommendations = {}
+const recommendations:any = {}
 const namespaces = new Set();
 
 
@@ -39,17 +39,19 @@ fs.createReadStream('recommendations.csv')
   
         
   })
-  .on('end', (row) => {
-    fs.writeFileSync(`recommendations-${new Date().getTime()}.json`, JSON.stringify(recommendations, null, 2), 'utf8');
+  .on('end', (row:any) => {
+    if(IS_DEBUG_MODE){
+      fs.writeFileSync(`recommendations-${new Date().getTime()}.json`, JSON.stringify(recommendations, null, 2), 'utf8');
+    }
     const numNamespaces = namespaces.size;
-    log(`Foram encontradas ${recommendations.length} recomendações para ${numNamespaces} namespaces.`);
+    log(`Foram encontradas ${recommendations?.length} recomendações para ${numNamespaces} namespaces.`);
 
     log(`Iniciando execução da aplicação de recomendações.`);
     applyRecommendation(recommendations);
     log(`Finalizando execução da aplicação de recomendações.`);
   })
 
-  function applyRecommendation(recommendations){
+  function applyRecommendation(recommendations:any){
     Object.keys(recommendations).forEach((namespaceKey) => {
       
       const base_spec = {
