@@ -11,11 +11,11 @@ run:
 	@echo "Script finalizado."
 
 secure-restart:
-	@echo "Iniciando script..."
+	@echo "Iniciando script no namespace ${namespace}..."
 	@if [ -z "${namespace}" ]; then \
 		echo "Informe o namespace"; \
 		exit 1; \
 	else \
 		kubens ${namespace}; \
-		echo "Script finalizado."; \
+		./src/sgclusters_restart_cleanup.sh ${namespace}; \
 	fi
