@@ -1,6 +1,8 @@
 import yaml from 'js-yaml';
 import csv from 'csv-parser';
 import fs from 'fs';
+import { getCurrentSpecFromRepository } from './helpers/repositories';
+import { AZURE_REPOSITORIES_NAME_EXCEPTIONS } from './helpers/repositories/azure-repositories-name-exceptions';
 
 const IS_DEBUG_MODE = process.env.DEBUG === 'true';
 
@@ -13,8 +15,8 @@ function log(message: string) {
   fs.appendFileSync('log.txt', log, 'utf8');
 }
 
-const recommendations:any = {}
-const namespaces = new Set();
+const recommendations: any = {}
+const namespaces: any = new Set();
 
 
 fs.createReadStream('recommendations.csv')
@@ -35,9 +37,6 @@ fs.createReadStream('recommendations.csv')
     }
 
     recommendations[namespace].push(recommendation);
-
-  
-        
   })
   .on('end', (row:any) => {
     if(IS_DEBUG_MODE){
@@ -51,14 +50,26 @@ fs.createReadStream('recommendations.csv')
     log(`Finalizando execução da aplicação de recomendações.`);
   })
 
-  function applyRecommendation(recommendations:any){
-    Object.keys(recommendations).forEach((namespaceKey) => {
+  async function applyRecommendation(recommendations:any){
+    for (const namespaceKey of Object.keys(recommendations)) {
       
-      const base_spec = {
-        containers: {}
+      // const base_spec:any = {
+      //   containers: {}
+      // }
+
+      const repositoryName = AZURE_REPOSITORIES_NAME_EXCEPTIONS?.[namespaceKey] ?? namespaceKey;
+
+      const base_spec: any = await getCurrentSpecFromRepository({
+        namespace: repositoryName,
+        environment: 'dev'
+      })
+
+
+      if(!base_spec){
+        throw new Error('Spec não encontrado para o namespace', namespaceKey)
       }
 
-      recommendations[namespaceKey].forEach((recommendation) => {
+      recommendations[namespaceKey].forEach((recommendation:any) => {
 
         if(!recommendation?.object || !recommendation?.action){
           throw new Error('Objeto ou ação não encontrados na recomendação', recommendation)
@@ -95,34 +106,32 @@ fs.createReadStream('recommendations.csv')
           log(`Padrão não encontrado na string: ${action}`);
         }
     
-        const resource = isMemory ? 'memory' : 'cpu';        
+        const resource:any = isMemory ? 'memory' : 'cpu';        
 
         if(isContainerPatroni) {  
-          base_spec[resource] = newValue
+          base_spec.spec[resource] = newValue
         } else {
           const containerKey = container.split(':')[1]
           if(!containerKey) { throw new Error('Container não encontrado na recomendação', recommendation) }
 
-          base_spec.containers[containerKey] = {
+          base_spec.spec.containers[containerKey] = {
             ...base_spec[containerKey],
             [resource]: newValue
           }
 
         }
       })
-
-      const newSpec = {spec: base_spec}
-
-      if(Object.keys?.(newSpec.spec.containers)?.length === 0){
-        delete newSpec.spec.containers
+      
+      if(Object.keys?.(base_spec.spec.containers)?.length === 0){
+        delete base_spec.spec.containers
       }
 
-      const result = yaml.dump(newSpec)
+      const result = yaml.dump(base_spec)
   
       const specName = namespaceKey + new Date().getTime() + '.yaml'
       const path = `${specName}`
       
       fs.writeFileSync(path, result, 'utf8');
       log(`Resultado: ${result}`)
-    })
+    }
   }
