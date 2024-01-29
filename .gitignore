@@ -1,7 +1,12 @@
 node_modules
 *.yaml
 log.txt
+*.log
 *.csv
 recommendations*.json
 managed_context
 test_suite_analysis
+temp
+!temp/.gitkeep
+.git
+.env

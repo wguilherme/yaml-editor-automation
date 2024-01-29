@@ -2,6 +2,8 @@ import yaml from 'js-yaml';
 import csv from 'csv-parser';
 import fs from 'fs';
 
+const IS_DEBUG_MODE = process.env.DEBUG === 'true';
+
 function log(message) {
   console.log(message);
   const date = new Date();
@@ -122,4 +124,3 @@ fs.createReadStream('recommendations.csv')
       log(`Resultado: ${result}`)
     })
   }
-
